@@ -1,1 +1,2309 @@
-index file in main branch
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hex Conquest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Segoe+UI:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <style>
+        body, html {
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0a1929;
+            touch-action: none;
+            color: #e0e0e0;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a1929;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.6s ease-out;
+        }
+        #splashTitle {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3em;
+            color: #f3f3f3;
+            margin-bottom: 30px;
+            letter-spacing: 4px;
+        }
+        #loadingBar {
+            width: 60%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            max-width: 400px;
+        }
+        #loadingProgress {
+            height: 100%;
+            background: #4299e1;
+            width: 0%;
+            transition: width 0.2s linear;
+        }
+
+        #resourceDisplay {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #081421;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 4px;
+            z-index: 10;
+            display: flex;
+            gap: 25px;
+            border: 1px solid #38b2ac;
+        }
+        .resource-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .resource-icon {
+            font-size: 1.2em;
+            min-width: 25px;
+            text-align: center;
+        }
+        #menuButton {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            z-index: 999;
+            background: #081421;
+            color: white;
+            border: 1px solid #38b2ac;
+            border-radius: 4px;
+            width: 45px;
+            height: 45px;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+        #menuButton:hover {
+            background: #1a3a5f;
+        }
+
+        .panel {
+            position: fixed;
+            background: #081421;
+            color: white;
+            border: 1px solid #38b2ac;
+            border-radius: 4px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.6);
+            max-height: 85vh;
+        }
+        .panel__header {
+            padding: 6px 10px;
+            border-bottom: 1px solid #38b2ac;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            background: #1a3a5f;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+        .panel__title {
+            flex-grow: 1;
+        }
+        .panel__close-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.6em;
+            cursor: pointer;
+            line-height: 1;
+            padding: 5px;
+        }
+        .panel__close-btn:hover {
+            color: white;
+        }
+        .panel__body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .panel__body::-webkit-scrollbar { width: 5px; height: 5px; }
+        .panel__body::-webkit-scrollbar-track { background: #081421; }
+        .panel__body::-webkit-scrollbar-thumb { background-color: #38b2ac; }
+
+        .panel--bottom {
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 100%; 
+            border-radius: 4px 4px 0 0;
+            border-bottom: none;
+            max-height: 280px; 
+        }
+        .panel--top-right {
+            top: 70px;
+            right: 20px;
+            width: 280px;
+        }
+
+        #productionQueue.panel--top-right {
+            width: 200px;
+        }
+        .panel--notification, .panel--tutorial {
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            max-width: 550px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .panel--notification {
+            top: 80px;
+            padding: 12px 25px;
+            background: #1a3a5f;
+        }
+        .panel--tutorial {
+            bottom: 80px;
+            padding: 15px 30px;
+            background: #1a3a5f;
+        }
+
+        #infoPanelContent {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 15px; 
+        }
+        #infoPanelContent > div {
+            flex-shrink: 0;
+            min-width: 280px; 
+            max-width: 320px;
+        }
+
+        .tile-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+        .tile-details-grid > div {
+            background: #1a3a5f;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .tile-details-grid strong {
+            display: block;
+            color: #4299e1;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        #queueItems {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .queue-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #1a3a5f;
+            border-radius: 4px;
+            justify-content: space-between;
+        }
+        .queue-item-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            flex-grow: 1;
+        }
+        .queue-item-cancel-btn {
+            background: none;
+            border: 1px solid #c53030;
+            color: #c53030;
+            cursor: pointer;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            line-height: 1;
+            margin-left: 8px;
+        }
+        .queue-item-cancel-btn:hover {
+            background: #c53030;
+            color: white;
+        }
+
+        .progress {
+            height: 5px;
+            margin-top: 4px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #4299e1;
+            width: 0%;
+        }
+        .unit-icon {
+            font-size: 1.6em;
+            margin-right: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .stats-grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .stat-item {
+            background: #1a3a5f;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #38b2ac;
+            margin-top: 4px;
+        }
+
+        .building-options-grid, .cargo-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            margin-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .building-btn, .cargo-btn {
+            background: #1a3a5f;
+            border: 1px solid #4299e1;
+            color: white;
+            padding: 12px;
+            margin: 5px;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1em;
+            flex-shrink: 0;
+        }
+        .building-btn:hover, .cargo-btn:hover {
+            background: #2c5282;
+            border-color: #63b3ed;
+        }
+        .building-icon, .cargo-icon {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .building-btn-small {
+            min-width: 90px;
+            padding: 10px;
+        }
+
+        .action-btn {
+            border: 1px solid;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+            display: block;
+        }
+        .action-btn:hover { opacity: 0.9; }
+        .retire-btn { background: #c05621; border-color: #dd6b20; }
+        .build-base-btn { background: #2f855a; border-color: #38a169; }
+        .demolish-btn { background: #9b2c2c; border-color: #c53030; }
+
+        .menu-btn {
+            width: 100%;
+            background: #2c5282;
+            border: 1px solid #4299e1;
+            color: white;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .menu-btn:hover { background: #3182ce; }
+        .settings-group {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(66, 153, 225, 0.2);
+        }
+        .settings-group h5 {
+            margin: 0 0 10px 0;
+            color: #4299e1;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .settings-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .confirm-btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .yes-btn { background-color: #38a169; color: white; }
+        .no-btn { background-color: #c53030; color: white; }
+
+        @media (max-width: 768px) {
+            #splashTitle { font-size: 2em; }
+            #resourceDisplay {
+                padding: 6px 10px;
+                gap: 10px;
+            }
+            .resource-item { font-size: 0.9em; }
+            .panel--top-right {
+                width: calc(100% - 40px);
+                left: 20px;
+            }
+            .panel--bottom {
+                max-width: 100vw;
+            }
+            .panel--notification, .panel--tutorial {
+                max-width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    
+    <div id="splashScreen">
+        <div id="splashTitle">HEX CONQUEST</div>
+        <div id="loadingBar"><div id="loadingProgress"></div></div>
+    </div>
+
+    
+    <div id="resourceDisplay">
+        <div class="resource-item"><span class="resource-icon">💰</span><span id="goldAmount">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🛢️</span><span id="oilAmount">0</span></div>
+        <div class="resource-item"><span class="resource-icon">⚙️</span><span id="ironAmount">0</span></div>
+    </div>
+    <button id="menuButton" onclick="ui.toggleMenu()">☰</button>
+
+    
+    <div id="infoPanel" class="panel panel--bottom">
+        <div class="panel__header">
+            <span id="tileTitle" class="panel__title">Tile Information</span>
+            <button class="panel__close-btn" onclick="ui.closeInfoPanel(true)">×</button>
+        </div>
+        <div id="infoPanelContent" class="panel__body">
+            
+            <div id="tileDetails"></div>
+            <div id="statDetails"></div>
+            <div id="cargoDetails"></div>
+            <div id="buildingOptions"></div>
+            <div id="unitOptions"></div>
+            <div id="actionButtons"></div>
+        </div>
+    </div>
+
+    
+    <div id="productionQueue" class="panel panel--top-right">
+        <div class="panel__header">
+            <span class="panel__title">Production Queue</span>
+        </div>
+        <div id="queueItems" class="panel__body">
+            
+        </div>
+    </div>
+
+    <div id="notification" class="panel panel--notification">
+        <div id="notificationContent" class="panel__body">
+            
+        </div>
+    </div>
+
+    <div id="tutorial" class="panel panel--tutorial">
+        <div class="panel__body">
+            Welcome to Hex Conquest! Select a tile in your <span style="color:#4299e1;">blue</span> territory to build. Create units to conquer the map!
+        </div>
+    </div>
+
+    <div id="menuPanel" class="panel panel--top-right">
+        <div class="panel__header">
+            <span class="panel__title">Menu</span>
+            <button class="panel__close-btn" onclick="ui.toggleMenu()">×</button>
+        </div>
+        <div class="panel__body">
+            <button class="menu-btn" onclick="location.reload()">Reload Map</button>
+            <div class="settings-group">
+                <h5>Graphics (Coming Soon)</h5>
+                <label><input type="checkbox" disabled> Low Quality</label>
+                <label><input type="checkbox" checked disabled> High Quality</label>
+            </div>
+            <div class="settings-group">
+                <h5>Sound (Coming Soon)</h5>
+                <label>Master Volume <input type="range" min="0" max="100" value="75" disabled></label>
+            </div>
+        </div>
+    </div>
+
+    
+    <canvas id="renderCanvas"></canvas>
+
+    <script>
+
+    const config = {
+        MAX_UNIT_LEVEL: 9,
+        HEAL_RATE: 10,
+        MAX_CONCURRENT_BUILDS: 2,
+        RESOURCE_GENERATION_INTERVAL: 1, 
+        TILE_REVENUE: 0.4 / 60, 
+        MAP_WIDTH: 40,
+        MAP_HEIGHT: 40,
+        HEX_SIZE: 2,
+        MERGE_STAT_BONUS: 0.15, 
+        XP_COST_FACTOR: 0.1, 
+        CONSTRUCTION_BOOST_PER_SOLDIER: 0.15, 
+        DEFEAT_REWARD: { gold: 2000, oil: 1000, iron: 1500 }, 
+    };
+
+    const BUILDINGS = {
+        GOLD_MINE: { name: "Gold Mine", icon: "💰", cost: { gold: 0, oil: 100, iron: 200 }, time: 15, output: { gold: 100 / 60 } },
+        OIL_RIG: { name: "Oil Rig", icon: "🛢️", cost: { gold: 200, oil: 0, iron: 300 }, time: 20, output: { oil: 80 / 60 } },
+        IRON_MINE: { name: "Iron Mine", icon: "⚙️", cost: { gold: 150, oil: 100, iron: 0 }, time: 18, output: { iron: 70 / 60 } },
+        ARMY_BASE: { name: "Army Base", icon: "🏰", cost: { gold: 600, oil: 400, iron: 700 }, time: 90, influence: 3, stats: { health: 4800, defense: 100, attack: 50, attackSpeed: 0.4, firingRange: 2, canAttack: { land: true } } },
+        NAVAL_BASE: { name: "Naval Base", icon: "⚓", cost: { gold: 500, oil: 300, iron: 600 }, time: 35, influence: 2 },
+        AIR_BASE: { name: "Air Base", icon: "✈️", cost: { gold: 550, oil: 350, iron: 650 }, time: 38, influence: 3 },
+        DOCK: { name: "Dock", icon: "⛵", cost: { gold: 300, oil: 150, iron: 400 }, time: 25 },
+        WAREHOUSE: { name: "Warehouse", icon: "🏬", cost: { gold: 400, oil: 200, iron: 300 }, time: 30 },
+        TURRET: { name: "Turret", icon: "🗼", cost: { gold: 800, oil: 600, iron: 1000 }, time: 60, influence: 1, stats: { health: 2500, defense: 120, attack: 150, attackSpeed: 1.0, firingRange: 4, canAttack: { land: true, naval: true } } },
+        AA_GUN: { name: "AA Gun", icon: "📡", cost: { gold: 700, oil: 500, iron: 800 }, time: 50, influence: 1, stats: { health: 2000, defense: 80, attack: 120, attackSpeed: 1.2, firingRange: 5, canAttack: { air: true } } }
+    };
+
+    const UNITS = {
+        SOLDIER: { name: "Soldier", icon: "👨‍✈️", type: "land", cost: { gold: 100, oil: 10, iron: 20 }, time: 4, cargoSize: 1, stats: { attack: 31, defense: 31, health: 200, speed: 0.3, range: 6, firingRange: 2, attackSpeed: 1.0, canAttack: { land: true } } },
+        TANK: { name: "Tank", icon: "🚜", type: "land", cost: { gold: 1000, oil: 160, iron: 200 }, time: 12, cargoSize: 4, stats: { attack: 91, defense: 91, health: 1200, speed: 0.5, range: 10, firingRange: 3, attackSpeed: 0.6, canAttack: { land: true } } },
+        DESTROYER: { name: "Destroyer", icon: "🛳️", type: "naval", cost: { gold: 2500, oil: 200, iron: 350 }, time: 18, stats: { attack: 150, defense: 180, health: 1200, speed: 1.0, range: 12, firingRange: 3, attackSpeed: 0.9, canAttack: { naval: true, land: true } } },
+        BATTLESHIP: { name: "Battleship", icon: "💥", type: "naval", cost: { gold: 5000, oil: 400, iron: 700 }, time: 30, stats: { attack: 300, defense: 270, health: 2400, speed: 0.6, range: 15, firingRange: 5, attackSpeed: 0.6, canAttack: { naval: true, land: true } } },
+        SUBMARINE: { name: "Submarine", icon: "U", type: "naval", cost: { gold: 3500, oil: 250, iron: 400 }, time: 22, stats: { attack: 180, defense: 200, health: 1330, speed: 0.6, range: 12, firingRange: 3, attackSpeed: 0.7, canAttack: { naval: true } } },
+        TRANSPORT: { name: "Transport", icon: "⛵", type: "naval", cost: { gold: 2000, oil: 200, iron: 300 }, time: 18, capacity: 8, cargo: [], cargoLoad: 0, stats: { attack: 0, defense: 80, health: 1000, speed: 0.7, range: 11, firingRange: 0, attackSpeed: 0 } },
+        FIGHTER: { name: "Fighter", icon: "✈️", type: "air", cost: { gold: 1800, oil: 120, iron: 140 }, time: 14, stats: { attack: 80, defense: 100, health: 900, speed: 1.2, range: 14, firingRange: 3, attackSpeed: 1.2, canAttack: { air: true, land: true, naval: true } } },
+        BOMBER: { name: "Bomber", icon: "💣", type: "air", cost: { gold: 2000, oil: 140, iron: 160 }, time: 14, stats: { attack: 250, defense: 80, health: 1000, speed: 0.9, range: 15, firingRange: 1, attackSpeed: 0.4, canAttack: { land: true, naval: true } } }
+    };
+
+    let gameState = {
+        teams: {
+            blue: { resources: { gold: 6000, oil: 4000, iron: 7000 }, active: true },
+            red: { resources: { gold: 6000, oil: 4000, iron: 7000 }, active: true },
+            orange: { resources: { gold: 6000, oil: 4000, iron: 7000 }, active: true },
+            purple: { resources: { gold: 6000, oil: 4000, iron: 7000 }, active: true }
+        },
+        playerAlliance: 'blue',
+        units: [],
+        productionQueue: [],
+        completedProduction: [], 
+        mapData: null,
+        resourceGenerationTimer: 0,
+        selectedTile: null,
+        selectedUnit: null,
+        movementRangeHighlights: [],
+        firingRangeHighlights: [],
+        influenceRangeHighlights: [],
+        buildRangeHighlights: [],
+        isMoving: false,
+        isSelectingBuildLocation: false,
+        isDeploying: false,
+        deployData: null,
+        builderUnit: null,
+        isAwaitingConfirmation: false,
+        confirmationCallback: null,
+    };
+
+    let engine, scene, camera, canvas;
+    let materials = {};
+    let highlightedTileMesh = null;
+
+    function initGame() {
+        canvas = document.getElementById('renderCanvas');
+        engine = new BABYLON.Engine(canvas, true);
+        scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3.FromHexString("#0a1929");
+
+        setupCamera();
+        setupLights();
+        setupMaterials();
+        setupEventListeners();
+
+        map.generate();
+
+        engine.runRenderLoop(() => {
+            const delta = engine.getDeltaTime() / 1000;
+            gameLoop(delta);
+            scene.render()
+        });
+        window.addEventListener('resize', () => engine.resize());
+        ui.showTutorial();
+    }
+
+    function setupCamera() {
+        camera = new BABYLON.ArcRotateCamera("camera", 0, Math.PI / 4, 100, new BABYLON.Vector3(0, 0, 0), scene);
+        camera.attachControl(canvas, true);
+        camera.minZ = 0.1;
+        camera.maxZ = 2000;
+        camera.panningSensibility = 150;
+        camera._panningMouseButton = 0; 
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            camera.panningSensibility = 230;
+        }
+        camera.lowerRadiusLimit = 40;
+        camera.upperRadiusLimit = 130;
+        camera.lowerBetaLimit = Math.PI / 8;
+        camera.upperBetaLimit = Math.PI / 2.5;
+
+        const hexWidth = config.HEX_SIZE * 2;
+        const hexHeight = Math.sqrt(3) * config.HEX_SIZE;
+        const buffer = 20;
+        const xExtent = ((config.MAP_WIDTH - 1) * (hexWidth * 0.75)) / 2;
+        const zExtent = hexHeight * (config.MAP_HEIGHT - 0.5) / 2;
+        const targetXMax = xExtent + buffer, targetXMin = -xExtent - buffer;
+        const targetZMax = zExtent + buffer, targetZMin = -zExtent - buffer;
+        camera.onAfterCheckInputsObservable.add(() => {
+            camera.target.x = Math.max(Math.min(camera.target.x, targetXMax), targetXMin);
+            camera.target.z = Math.max(Math.min(camera.target.z, targetZMax), targetZMin);
+        });
+    }
+
+    function setupLights() {
+        new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene).intensity = 0.75;
+        new BABYLON.DirectionalLight("light2", new BABYLON.Vector3(-1, -1, -1), scene).intensity = 0.3;
+    }
+
+    function setupMaterials() {
+        materials.highlight = new BABYLON.StandardMaterial("highlightMat", scene);
+        materials.highlight.emissiveColor = new BABYLON.Color3(0.9, 0.9, 0.1);
+        materials.highlight.alpha = 0.25;
+
+        materials.movementRange = new BABYLON.StandardMaterial("movementRangeMat", scene);
+        materials.movementRange.emissiveColor = new BABYLON.Color3(1, 1, 0);
+        materials.movementRange.alpha = 0.3;
+
+        materials.firingRange = new BABYLON.StandardMaterial("firingRangeMat", scene);
+        materials.firingRange.emissiveColor = new BABYLON.Color3(0.9, 0.1, 0.1); 
+        materials.firingRange.alpha = 0.3;
+
+        materials.influenceRange = new BABYLON.StandardMaterial("influenceRangeMat", scene);
+        materials.influenceRange.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        materials.influenceRange.alpha = 0.2;
+
+        materials.buildRange = new BABYLON.StandardMaterial("buildRangeMat", scene);
+        materials.buildRange.emissiveColor = new BABYLON.Color3(0, 1, 0);
+        materials.buildRange.alpha = 0.4;
+
+        materials.mergeRange = new BABYLON.StandardMaterial("mergeMat", scene);
+        materials.mergeRange.emissiveColor = new BABYLON.Color3(0.2, 1, 0.2);
+        materials.mergeRange.alpha = 0.4;
+    }
+
+    function setupEventListeners() {
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        scene.onPointerDown = (evt, pickResult) => {
+            if (gameState.isAwaitingConfirmation) return;
+
+            if (!pickResult.hit || !pickResult.pickedMesh.isPickable) {
+                ui.closeInfoPanel();
+            }
+        };
+
+        const queueContainer = document.getElementById('queueItems');
+        queueContainer.addEventListener('click', (event) => {
+            const target = event.target;
+
+            const button = target.closest('.queue-item-cancel-btn');
+            if (button) {
+                const index = parseInt(button.getAttribute('data-queue-index'), 10);
+                if (!isNaN(index)) {
+                    actions.cancelProduction(index);
+                }
+            }
+        });
+    }
+
+    const ui = {
+        updateResourceDisplay() {
+            const res = gameState.teams[gameState.playerAlliance].resources;
+            document.getElementById('goldAmount').textContent = Math.floor(res.gold);
+            document.getElementById('oilAmount').textContent = Math.floor(res.oil);
+            document.getElementById('ironAmount').textContent = Math.floor(res.iron);
+        },
+        updateProductionQueueDisplay() {
+            const container = document.getElementById('queueItems');
+            const panel = document.getElementById('productionQueue');
+
+            if (gameState.productionQueue.length === 0 && gameState.completedProduction.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            panel.style.display = 'flex';
+            container.innerHTML = ''; 
+
+            gameState.productionQueue.forEach((item, index) => {
+                const qItem = document.createElement('div');
+                qItem.className = 'queue-item';
+
+                let infoContent = `<span class="unit-icon">${helpers.getIconForItem(item.item)}</span>`;
+                infoContent += `<div class="queue-item-info"><span>${item.item}</span>`;
+
+                if (index < config.MAX_CONCURRENT_BUILDS) {
+                    const progress = (1 - item.remainingTime / item.totalTime) * 100;
+                    infoContent += `<div class="progress"><div class="progress-bar" style="width: ${progress}%"></div></div>`;
+                } else {
+                    infoContent += `<div style="font-size:0.8em; color: #aaa;">Queued</div>`;
+                }
+                infoContent += `</div>`;
+
+                qItem.innerHTML = infoContent;
+
+                const cancelButton = document.createElement('button');
+                cancelButton.className = 'queue-item-cancel-btn';
+                cancelButton.textContent = '×';
+                cancelButton.setAttribute('data-queue-index', index); 
+
+                qItem.appendChild(cancelButton);
+                container.appendChild(qItem);
+            });
+
+            gameState.completedProduction.forEach(item => {
+                const qItem = document.createElement('div');
+                qItem.className = 'queue-item';
+                qItem.style.cursor = 'pointer';
+                qItem.style.background = '#2f855a';
+                qItem.style.border = '1px solid #38a169';
+
+                const iconSpan = document.createElement('span');
+                iconSpan.className = 'unit-icon';
+                iconSpan.textContent = helpers.getIconForItem(item.item);
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'queue-item-info';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = item.item;
+
+                const statusDiv = document.createElement('div');
+                statusDiv.style.fontSize = '0.8em';
+                statusDiv.style.color = '#fff';
+                statusDiv.textContent = 'Completed!';
+
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(statusDiv);
+
+                qItem.appendChild(iconSpan);
+                qItem.appendChild(infoDiv);
+
+                qItem.onclick = () => ui.centerCameraOnTile(item.tile);
+
+                container.appendChild(qItem);
+            });
+        },
+        centerCameraOnTile(tile) {
+            if (!tile || !tile.mesh) return;
+
+            const frameRate = 60;
+            const panAnim = new BABYLON.Animation(
+                "panAnimation",
+                "target",
+                frameRate,
+                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+            );
+
+            const keys = [];
+            keys.push({ frame: 0, value: camera.target });
+            keys.push({ frame: frameRate * 0.5, value: tile.mesh.position }); 
+
+            panAnim.setKeys(keys);
+
+            camera.animations = []; 
+            camera.animations.push(panAnim);
+            scene.beginAnimation(camera, 0, frameRate * 0.5, false);
+        },
+        showNotification(msg) {
+            const n = document.getElementById('notification');
+            const content = document.getElementById('notificationContent');
+            content.innerHTML = msg;
+            n.style.display = 'flex';
+            setTimeout(() => n.style.display = 'none', 3000);
+        },
+        showConfirmation(msg, onConfirm) {
+            gameState.isAwaitingConfirmation = true;
+            gameState.confirmationCallback = onConfirm;
+            const n = document.getElementById('notification');
+            const content = document.getElementById('notificationContent');
+            content.innerHTML = `
+                <div>${msg}</div>
+                <div class="confirmation-buttons">
+                    <button class="confirm-btn yes-btn" onclick="handlers.handleConfirmation(true)">Yes</button>
+                    <button class="confirm-btn no-btn" onclick="handlers.handleConfirmation(false)">No</button>
+                </div>
+            `;
+            n.style.display = 'flex';
+        },
+        hideConfirmation() {
+            gameState.isAwaitingConfirmation = false;
+            gameState.confirmationCallback = null;
+            document.getElementById('notification').style.display = 'none';
+        },
+        showTutorial() {
+            setTimeout(() => {
+                const tutorialPanel = document.getElementById('tutorial');
+                tutorialPanel.style.display = 'flex';
+                setTimeout(() => {
+                    tutorialPanel.style.display = 'none';
+                }, 2000);
+            }, 2000);
+        },
+        toggleMenu() {
+            const menu = document.getElementById('menuPanel');
+            menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+        },
+        closeInfoPanel(fullReset = true) {
+            document.getElementById('infoPanel').style.display = 'none';
+            if (fullReset) {
+                if (highlightedTileMesh) {
+                    highlightedTileMesh.dispose();
+                    highlightedTileMesh = null;
+                }
+                gameState.selectedTile = null;
+                gameState.selectedUnit = null;
+                gameState.isSelectingBuildLocation = false;
+                gameState.isDeploying = false;
+                gameState.deployData = null;
+                gameState.builderUnit = null;
+                highlight.clearAll();
+            }
+        },
+        showTileInfo(tile) {
+            const panel = document.getElementById('infoPanel');
+            panel.style.display = 'flex';
+            const title = tile.owner === 'neutral'
+                ? 'Neutral Tile'
+                : `${tile.owner.charAt(0).toUpperCase() + tile.owner.slice(1)} Territory`;
+            document.getElementById('tileTitle').textContent = title;
+
+            let detailsHTML = `<div class="tile-details-grid">`;
+            detailsHTML += `<div><strong>Type</strong><span>${tile.type}</span></div>`;
+            if (tile.resource) {
+                detailsHTML += `<div><strong>Resource</strong><span>${tile.resource}</span></div>`;
+            }
+            if (tile.building) {
+                detailsHTML += `<div><strong>Building</strong><span>${tile.building}</span></div>`;
+            }
+            if (tile.unit) {
+                detailsHTML += `<div><strong>Unit</strong><span>${tile.unit.type} (Lvl ${tile.unit.level})</span></div>`;
+            }
+            detailsHTML += `</div>`;
+            document.getElementById('tileDetails').innerHTML = detailsHTML;
+
+            const actionButtons = document.getElementById('actionButtons');
+            actionButtons.innerHTML = ''; 
+
+            if (tile.building && tile.owner === gameState.playerAlliance) {
+                actionButtons.appendChild(this.createActionButton('Demolish Building', 'demolish-btn', () => actions.demolishBuilding(tile)));
+            }
+            if (tile.unit && tile.unit.owner === gameState.playerAlliance) {
+                actionButtons.appendChild(this.createActionButton('Retire Unit', 'retire-btn', () => actions.retireUnit(tile.unit)));
+                if (tile.unit.type === 'Soldier') {
+                    actionButtons.appendChild(this.createActionButton('Build New Base', 'build-base-btn', () => actions.showBuildBaseOptions(tile.unit)));
+                }
+            }
+            if (tile.owner === 'neutral' && tile.type === 'land' && !tile.building && !tile.unit) {
+                const adjacentSoldier = helpers.getNeighbors(tile).find(n => n.unit && n.unit.type === 'Soldier' && n.unit.owner === gameState.playerAlliance);
+                if (adjacentSoldier) {
+                    actionButtons.appendChild(this.createActionButton('Build Base Here', 'build-base-btn', () => actions.buildBaseWithSoldier(adjacentSoldier.unit, tile)));
+                }
+            }
+
+            document.getElementById('statDetails').innerHTML = this.getStatDetailsHTML(tile.unit, tile);
+
+            this.updateActionPanels(tile);
+        },
+        getStatDetailsHTML(unit, buildingTile) {
+            let html = '';
+            if (unit) {
+                const stats = helpers.getEntityStats(unit);
+                html += `<div class="stats-grid stats-grid-3">
+                    <div class="stat-item">Health<div class="stat-value">${Math.ceil(stats.health)}/${stats.maxHealth}</div></div>
+                    <div class="stat-item">Attack<div class="stat-value">${stats.attack}</div></div>
+                    <div class="stat-item">Defense<div class="stat-value">${stats.defense}</div></div>
+                    <div class="stat-item">Move Range<div class="stat-value">${stats.range}</div></div>
+                    <div class="stat-item">Fire Range<div class="stat-value">${stats.firingRange}</div></div>
+                    <div class="stat-item">XP<div class="stat-value">${Math.floor(unit.experience || 0)}</div></div>
+                </div>`;
+            }
+            if (buildingTile && buildingTile.building) {
+                const buildingInfo = helpers.getBuildingInfo(buildingTile.building)
+                const stats = buildingInfo.stats;
+                if (!stats) return html;
+
+                html += `<div class="stats-grid stats-grid-3" style="margin-top:10px;">
+                    <div class="stat-item">Health<div class="stat-value">${Math.ceil(buildingTile.stats.health)}/${stats.health}</div></div>
+                    <div class="stat-item">Attack<div class="stat-value">${stats.attack || 0}</div></div>
+                    <div class="stat-item">Defense<div class="stat-value">${stats.defense || 0}</div></div>
+                    <div class="stat-item">Fire Range<div class="stat-value">${stats.firingRange || 0}</div></div>
+                    <div class="stat-item">Reach<div class="stat-value">${buildingInfo.influence || 0}</div></div>
+                </div>`;
+                if (buildingInfo.output) {
+                    if (buildingInfo.output.gold) html += `<div>Output: ${(buildingInfo.output.gold * 60).toFixed(1)}💰/min</div>`;
+                    if (buildingInfo.output.oil) html += `<div>Output: ${(buildingInfo.output.oil * 60).toFixed(1)}🛢️/min</div>`;
+                    if (buildingInfo.output.iron) html += `<div>Output: ${(buildingInfo.output.iron * 60).toFixed(1)}⚙️/min</div>`;
+                }
+            }
+            return html;
+        },
+        updateActionPanels(tile) {
+            const buildOpts = document.getElementById('buildingOptions');
+            const unitOpts = document.getElementById('unitOptions');
+            const cargoOpts = document.getElementById('cargoDetails');
+            buildOpts.innerHTML = '';
+            unitOpts.innerHTML = '';
+            cargoOpts.innerHTML = '';
+
+            if (tile.owner === gameState.playerAlliance && tile.type === 'land' && !tile.building && !tile.unit) {
+                buildOpts.innerHTML = '<div class="building-options-grid"></div>';
+                const grid = buildOpts.querySelector('.building-options-grid');
+                if (tile.resource) {
+                    if (tile.resource === 'gold') this.addBuildingButton(BUILDINGS.GOLD_MINE, grid);
+                    if (tile.resource === 'oil') this.addBuildingButton(BUILDINGS.OIL_RIG, grid);
+                    if (tile.resource === 'iron') this.addBuildingButton(BUILDINGS.IRON_MINE, grid);
+                }
+                this.addBuildingButton(BUILDINGS.ARMY_BASE, grid);
+                this.addBuildingButton(BUILDINGS.AIR_BASE, grid);
+                this.addBuildingButton(BUILDINGS.WAREHOUSE, grid);
+                this.addBuildingButton(BUILDINGS.TURRET, grid);
+                this.addBuildingButton(BUILDINGS.AA_GUN, grid);
+                if (helpers.isAdjacentToWater(tile)) {
+                    this.addBuildingButton(BUILDINGS.NAVAL_BASE, grid);
+                    this.addBuildingButton(BUILDINGS.DOCK, grid);
+                }
+            } 
+            else if (tile.building && !tile.unit && tile.owner === gameState.playerAlliance) {
+                unitOpts.innerHTML = '<div class="building-options-grid"></div>';
+                const grid = unitOpts.querySelector('.building-options-grid');
+                switch (tile.building) {
+                    case 'Army Base': this.addUnitButton(UNITS.SOLDIER, grid); this.addUnitButton(UNITS.TANK, grid); break;
+                    case 'Naval Base': this.addUnitButton(UNITS.BATTLESHIP, grid); this.addUnitButton(UNITS.DESTROYER, grid); this.addUnitButton(UNITS.SUBMARINE, grid); this.addUnitButton(UNITS.TRANSPORT, grid); break;
+                    case 'Air Base': this.addUnitButton(UNITS.FIGHTER, grid); this.addUnitButton(UNITS.BOMBER, grid); break;
+                }
+            }
+
+            if (tile.unit && tile.unit.type === 'Transport' && tile.unit.cargo && tile.unit.cargo.length > 0) {
+                 cargoOpts.innerHTML = '<h4>Cargo</h4><div class="cargo-grid"></div>';
+                 const grid = cargoOpts.querySelector('.cargo-grid');
+                 tile.unit.cargo.forEach((cargoUnit, index) => {
+                     const btn = document.createElement('button');
+                     btn.className = 'cargo-btn';
+                     btn.innerHTML = `
+                         <div class="cargo-icon">${helpers.getIconForItem(cargoUnit.type)}</div>
+                         <div>${cargoUnit.type} (Lvl ${cargoUnit.level})</div>`;
+                     btn.onclick = () => actions.selectCargoForDeploy(tile.unit, index);
+                     grid.appendChild(btn);
+                 });
+            }
+        },
+        createActionButton(text, className, onClick) {
+            const btn = document.createElement('div');
+            btn.className = `action-btn ${className}`;
+            btn.textContent = text;
+            btn.onclick = onClick;
+            return btn;
+        },
+        addBuildingButton(building, container) {
+            const btn = this.createGameActionButton(building, () => actions.startBuilding(building));
+            container.appendChild(btn);
+        },
+        addUnitButton(unit, container) {
+            const btn = this.createGameActionButton(unit, () => actions.startUnitProduction(unit));
+            container.appendChild(btn);
+        },
+        createGameActionButton(item, onClick) {
+            const btn = document.createElement('button');
+            btn.className = 'building-btn building-btn-small';
+            let costHtml = '';
+            if (item.cost.gold > 0) costHtml += `${item.cost.gold}💰 `;
+            if (item.cost.oil > 0) costHtml += `${item.cost.oil}🛢️ `;
+            if (item.cost.iron > 0) costHtml += `${item.cost.iron}⚙️`;
+            btn.innerHTML = `
+                <div class="building-icon">${item.icon}</div>
+                <div>${item.name}</div>
+                <div style="font-size: 0.9em; margin-top: 4px;">${costHtml}</div>
+                <div style="font-size: 0.8em;">${item.time}s</div>`;
+            btn.onclick = onClick;
+            return btn;
+        }
+    };
+
+    const map = {
+        generate() {
+            const noise = new SimplexNoise();
+            const mapData = [];
+            for (let z = 0; z < config.MAP_HEIGHT; z++) {
+                for (let x = 0; x < config.MAP_WIDTH; x++) {
+                    const noiseHeight = noise.noise2D(x / 10, z / 10);
+                    const isLand = noiseHeight * 5 > -0.5;
+                    let resource = null;
+                    if (isLand) {
+                        const rand = Math.random();
+                        if (rand < 0.1) resource = 'gold';
+                        else if (rand < 0.2) resource = 'oil';
+                        else if (rand < 0.3) resource = 'iron';
+                    }
+                    mapData.push({
+                        x, z,
+                        height: isLand ? noiseHeight * 5 : -0.5,
+                        type: isLand ? 'land' : 'water',
+                        owner: 'neutral',
+                        resource,
+                        building: null, unit: null, mesh: null, buildingMesh: null, foundationMesh: null,
+                        attackCooldown: 0,
+                        stats: null,
+                    });
+                }
+            }
+            gameState.mapData = mapData;
+            this.render();
+            this.assignStartingTerritories();
+        },
+        render() {
+            const hexWidth = config.HEX_SIZE * 2;
+            const hexHeight = Math.sqrt(3) * config.HEX_SIZE;
+            const tileMeshHeight = 5;
+
+            const xOffset = ((config.MAP_WIDTH - 1) * (hexWidth * 0.75)) / 2;
+            const zOffset = hexHeight * (config.MAP_HEIGHT - 0.5) / 2;
+
+            gameState.mapData.forEach(tile => {
+                const hexX = (hexWidth * 0.75) * tile.x;
+                const hexZ = hexHeight * (tile.z + 0.5 * (tile.x % 2));
+                const hexagon = BABYLON.MeshBuilder.CreateCylinder("hex", { diameter: config.HEX_SIZE * 2, height: tileMeshHeight, tessellation: 6 }, scene);
+                hexagon.position.set(hexX - xOffset, tile.height - (tileMeshHeight / 2), hexZ - zOffset);
+                tile.mesh = hexagon;
+                tile.mesh.tileData = tile;
+                this.updateTileMaterial(tile);
+                if (tile.resource) this.createResourceIndicator(tile);
+
+                hexagon.actionManager = new BABYLON.ActionManager(scene);
+                hexagon.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => handlers.handleTileClick(tile)));
+            });
+        },
+        updateTileMaterial(tile) {
+            if (!tile.mesh) return;
+            if (tile.mesh.material) tile.mesh.material.dispose();
+            const material = new BABYLON.StandardMaterial("mat", scene);
+            switch (tile.owner) {
+                case 'blue': material.diffuseColor = new BABYLON.Color3(0.2, 0.4, 0.8); break;
+                case 'red': material.diffuseColor = new BABYLON.Color3(0.8, 0.2, 0.2); break;
+                case 'orange': material.diffuseColor = new BABYLON.Color3(1.0, 0.5, 0.0); break;
+                case 'purple': material.diffuseColor = new BABYLON.Color3(0.5, 0.0, 0.5); break;
+                default: material.diffuseColor = tile.type === 'water' ? new BABYLON.Color3(0, 0.3, 0.6) : new BABYLON.Color3(0.1, 0.6, 0.1); break;
+            }
+            tile.mesh.material = material;
+        },
+        createResourceIndicator(tile) {
+            const resIndicator = BABYLON.MeshBuilder.CreateDisc("res", { radius: config.HEX_SIZE * 0.25 }, scene);
+            resIndicator.rotation.x = Math.PI / 2;
+            resIndicator.position.copyFrom(tile.mesh.position);
+            resIndicator.position.y = tile.height + 0.1;
+            const resMaterial = new BABYLON.StandardMaterial("resMat", scene);
+            if (tile.resource === 'gold') resMaterial.diffuseColor = new BABYLON.Color3(0.9, 0.8, 0);
+            else if (tile.resource === 'oil') resMaterial.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.2);
+            else if (tile.resource === 'iron') resMaterial.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.55);
+            resIndicator.material = resMaterial;
+            resIndicator.isPickable = false;
+        },
+        assignStartingTerritories() {
+            const teams = ['blue', 'red', 'orange', 'purple'];
+            const positions = [
+                { x: 5, z: config.MAP_HEIGHT - 10 },
+                { x: config.MAP_WIDTH - 10, z: 5 },
+                { x: 5, z: 5 },
+                { x: config.MAP_WIDTH - 10, z: config.MAP_HEIGHT - 10 }
+            ];
+
+            teams.forEach((team, i) => {
+                let startTile = helpers.findNearestLand(positions[i].x, positions[i].z);
+                if (startTile) {
+                    const buildingInfo = BUILDINGS.ARMY_BASE;
+                    startTile.building = buildingInfo.name;
+                    startTile.owner = team;
+                    this.updateTileMaterial(startTile);
+                    if (buildingInfo.stats) startTile.stats = JSON.parse(JSON.stringify(buildingInfo.stats));
+                    rendering.createBuildingMesh(startTile);
+                    actions.expandTerritory(startTile, buildingInfo.influence, team);
+                }
+            });
+        }
+    };
+
+    const rendering = {
+        createFoundationMesh(tile) {
+            if (tile.foundationMesh) tile.foundationMesh.dispose();
+            const foundation = BABYLON.MeshBuilder.CreateCylinder("foundation", { height: 0.2, diameter: 1.8 }, scene);
+            foundation.position.copyFrom(tile.mesh.position);
+            foundation.position.y = tile.height + 0.1;
+            const foundMat = new BABYLON.StandardMaterial("foundMat", scene);
+            foundMat.diffuseColor = BABYLON.Color3.Gray();
+            foundation.material = foundMat;
+            tile.foundationMesh = foundation;
+        },
+        createBuildingMesh(tile) {
+            if (!tile.mesh || !tile.building) return;
+            if (tile.buildingMesh) tile.buildingMesh.dispose();
+            if (tile.foundationMesh) {
+                tile.foundationMesh.dispose();
+                tile.foundationMesh = null;
+            }
+            const pos = tile.mesh.position.clone();
+            pos.y = tile.height + 0.5;
+            let mesh;
+            const mat = new BABYLON.StandardMaterial("bmat", scene);
+            switch (tile.building) {
+                case "Gold Mine": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 1.2, diameter: 1.2 }); mat.diffuseColor = BABYLON.Color3.Yellow(); break;
+                case "Oil Rig": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 1.5, diameter: 1.2 }); mat.diffuseColor = BABYLON.Color3.Black(); break;
+                case "Iron Mine": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 1.0, diameter: 1.2 }); mat.diffuseColor = BABYLON.Color3.Gray(); break;
+                case "Army Base": mesh = BABYLON.MeshBuilder.CreateBox("b", { height: 1.2, width: 1.2, depth: 1.2 }); mat.diffuseColor = new BABYLON.Color3(0.5, 0.3, 0.1); break;
+                case "Naval Base": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 1.8, diameter: 1.2, tessellation: 4 }); mat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.8); break;
+                case "Air Base": mesh = BABYLON.MeshBuilder.CreatePlane("b", { height: 1.3, width: 1.2, depth: 1.5 }); mesh.rotation.x = Math.PI / 2; mat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3); break;
+                case "Dock": mesh = BABYLON.MeshBuilder.CreateBox("b", { height: 0.8, width: 1.8, depth: 1 }); mat.diffuseColor = new BABYLON.Color3(0.4, 0.2, 0); break;
+                case "Warehouse": mesh = BABYLON.MeshBuilder.CreateBox("b", { size: 1.3 }); mat.diffuseColor = new BABYLON.Color3(0.6, 0.6, 0.6); break;
+                case "Turret": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 2.5, diameterTop: 0.5, diameterBottom: 1.2 }); mat.diffuseColor = new BABYLON.Color3(0.5, 0.3, 0.1); break;
+                case "AA Gun": mesh = BABYLON.MeshBuilder.CreateCylinder("b", { height: 2.0, diameter: 0.8 }); mat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.2); break;
+                default: return;
+            }
+            mesh.material = mat;
+            mesh.position = pos;
+            tile.buildingMesh = mesh;
+            mesh.actionManager = new BABYLON.ActionManager(scene);
+            mesh.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => handlers.handleTileClick(tile)));
+        },
+        createUnitMesh(unit, tile) {
+            let mesh;
+            const mat = new BABYLON.StandardMaterial("unitMat", scene);
+            const pos = tile.mesh.position.clone();
+            pos.y = tile.height + 0.6;
+
+            switch (unit.owner) {
+                case 'blue': mat.diffuseColor = new BABYLON.Color3(0.2, 0.4, 0.8); break;
+                case 'red': mat.diffuseColor = new BABYLON.Color3(0.8, 0.2, 0.2); break;
+                case 'orange': mat.diffuseColor = new BABYLON.Color3(1.0, 0.5, 0.0); break;
+                case 'purple': mat.diffuseColor = new BABYLON.Color3(0.5, 0.0, 0.5); break;
+            }
+
+            switch (unit.type) {
+                case "Soldier": mesh = BABYLON.MeshBuilder.CreateCylinder("unit", { height: 1.2, diameterTop: 0.4, diameterBottom: 0.6 }); break;
+                case "Tank": mesh = BABYLON.MeshBuilder.CreateBox("unit", { height: 0.5, width: 0.8, depth: 1.2 }); break;
+                case "Battleship": mesh = BABYLON.MeshBuilder.CreateBox("unit", { height: 0.6, width: 1.0, depth: 3.0 }); break;
+                case "Destroyer": mesh = BABYLON.MeshBuilder.CreateBox("unit", { height: 0.4, width: 0.6, depth: 2.0 }); break;
+                case "Submarine": mesh = BABYLON.MeshBuilder.CreateCapsule("unit", { height: 1, radius: 0.3 }); break;
+                case "Transport": mesh = BABYLON.MeshBuilder.CreateBox("unit", { height: 0.3, width: 0.8, depth: 1.5 }); break;
+                case "Fighter": mesh = BABYLON.MeshBuilder.CreateCylinder("unit", { height: 0.2, diameter: 0.8, tessellation: 3 }); mesh.rotation.x = Math.PI / 2; break;
+                case "Bomber": mesh = BABYLON.MeshBuilder.CreateBox("unit", { height: 0.2, width: 1.2, depth: 1.2 }); break;
+                default: mesh = BABYLON.MeshBuilder.CreateSphere("unit", { diameter: 0.5 }); break;
+            }
+
+            mesh.material = mat;
+            mesh.position = pos;
+            unit.mesh = mesh;
+            tile.unit = unit;
+            this.updateUnitMesh(unit);
+            this.createOrUpdateLevelIndicator(unit);
+            mesh.actionManager = new BABYLON.ActionManager(scene);
+            mesh.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, () => handlers.handleTileClick(unit.tile)));
+            return mesh;
+        },
+        updateUnitMesh(unit) {
+            if (unit.mesh) {
+                const scale = 1 + (unit.level - 1) * 0.1;
+                unit.mesh.scaling.set(scale, scale, scale);
+            }
+        },
+        createOrUpdateLevelIndicator(unit) {
+
+            if (unit.levelIndicatorContainer) {
+                unit.levelIndicatorContainer.dispose();
+                unit.levelIndicatorContainer = null;
+            }
+
+            if (unit.level <= 1) return;
+
+            const container = new BABYLON.TransformNode("levelIndicatorContainer", scene);
+            container.parent = unit.mesh; 
+
+            const yOffset = unit.type === "Fighter" || unit.type === "Bomber" ? 0.5 : 1.5;
+            container.position.y = yOffset;
+
+            const level = unit.level;
+            const indicatorHeight = 0.1;
+            const indicatorRadius = 0.15;
+
+            for (let i = 0; i < level - 1; i++) {
+                const disc = BABYLON.MeshBuilder.CreateCylinder(`levelDisc_${i}`, {
+                    height: indicatorHeight,
+                    diameter: indicatorRadius * 2
+                }, scene);
+
+                const mat = new BABYLON.StandardMaterial("levelMat", scene);
+                mat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.2); 
+                mat.emissiveColor = new BABYLON.Color3(0.4, 0.4, 0.1);
+                disc.material = mat;
+
+                disc.parent = container;
+                disc.position.y = i * (indicatorHeight + 0.05); 
+                disc.isPickable = false;
+            }
+
+            unit.levelIndicatorContainer = container;
+        },
+        createBulletAndTrail(startPos, endPos) {
+            const bullet = BABYLON.MeshBuilder.CreateSphere("bullet", {diameter: 0.3}, scene);
+            bullet.material = new BABYLON.StandardMaterial("bulletMat", scene);
+            bullet.material.diffuseColor = BABYLON.Color3.Black();
+            bullet.position = startPos.clone();
+            bullet.isPickable = false;
+
+            const travelTime = BABYLON.Vector3.Distance(startPos, endPos) / 20;
+            const anim = new BABYLON.Animation("bulletAnim", "position", 60, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            anim.setKeys([{ frame: 0, value: startPos }, { frame: 100, value: endPos }]);
+            bullet.animations.push(anim);
+
+            scene.beginAnimation(bullet, 0, 100, false, 1 / travelTime, () => bullet.dispose());
+        },
+        createImpactSmoke(position, attackPower) {
+
+            const smokePS = new BABYLON.ParticleSystem("impactSmoke", 200, scene);
+            smokePS.particleTexture = null;
+            smokePS.emitter = position.clone();
+            smokePS.minEmitBox = new BABYLON.Vector3(-0.5, 0, -0.5);
+            smokePS.maxEmitBox = new BABYLON.Vector3(0.5, 0, 0.5);
+            smokePS.color1 = new BABYLON.Color4(0.1, 0.1, 0.1, 0.8);
+            smokePS.color2 = new BABYLON.Color4(0.3, 0.3, 0.3, 0.5);
+            smokePS.colorDead = new BABYLON.Color4(0, 0, 0, 0.0);
+
+            const sizeFactor = Math.max(1.0, Math.min(3.0, attackPower / 100));
+            smokePS.minSize = 0.8 * sizeFactor;
+            smokePS.maxSize = 1.5 * sizeFactor;
+
+            smokePS.minLifeTime = 0.8;
+            smokePS.maxLifeTime = 1.8;
+            smokePS.emitRate = 100;
+            smokePS.manualEmitCount = 0;
+
+            smokePS.minEmitPower = 2;
+            smokePS.maxEmitPower = 5;
+            smokePS.updateSpeed = 0.01;
+            smokePS.disposeOnStop = true;
+
+            smokePS.start();
+            setTimeout(() => smokePS.stop(), 500);
+
+            const firePS = new BABYLON.ParticleSystem("impactFire", 100, scene);
+            firePS.particleTexture = null;
+            firePS.emitter = position.clone();
+            firePS.minEmitBox = new BABYLON.Vector3(-0.2, 0, -0.2);
+            firePS.maxEmitBox = new BABYLON.Vector3(0.2, 0, 0.2);
+            firePS.color1 = new BABYLON.Color4(1, 0.5, 0, 1); 
+            firePS.color2 = new BABYLON.Color4(1, 0.9, 0, 1); 
+            firePS.colorDead = new BABYLON.Color4(0.5, 0, 0, 0.0); 
+
+            firePS.minSize = 0.5 * sizeFactor;
+            firePS.maxSize = 1.0 * sizeFactor;
+
+            firePS.minLifeTime = 0.3;
+            firePS.maxLifeTime = 0.8;
+            firePS.emitRate = 200;
+
+            firePS.minEmitPower = 1;
+            firePS.maxEmitPower = 3;
+            firePS.updateSpeed = 0.015;
+            firePS.disposeOnStop = true;
+
+            firePS.start();
+            setTimeout(() => firePS.stop(), 250);
+        },
+        flashDamage(mesh) {
+            if (!mesh || !mesh.material) return;
+            const originalColor = mesh.material.emissiveColor;
+            mesh.material.emissiveColor = BABYLON.Color3.Red();
+            setTimeout(() => {
+                if (mesh && mesh.material) {
+                    mesh.material.emissiveColor = originalColor || new BABYLON.Color3(0, 0, 0);
+                }
+            }, 200);
+        }
+    };
+
+    const highlight = {
+        clearAll() {
+            this.clearMovementRange();
+            this.clearFiringRange();
+            this.clearInfluenceRange();
+            this.clearBuildRange();
+        },
+        clearMovementRange() {
+            gameState.movementRangeHighlights.forEach(h => h.dispose());
+            gameState.movementRangeHighlights = [];
+
+            gameState.mapData.forEach(t => {
+                t.isReachable = false;
+                t.isMergeTarget = false;
+                t.isLoadable = false;
+                t.isDeployable = false;
+            });
+        },
+        clearFiringRange() {
+            gameState.firingRangeHighlights.forEach(h => h.dispose());
+            gameState.firingRangeHighlights = [];
+        },
+        clearInfluenceRange() {
+            gameState.influenceRangeHighlights.forEach(h => h.dispose());
+            gameState.influenceRangeHighlights = [];
+        },
+        clearBuildRange() {
+            gameState.buildRangeHighlights.forEach(h => h.dispose());
+            gameState.buildRangeHighlights = [];
+            gameState.mapData.forEach(t => t.isBuildable = false);
+        },
+        showMovementRange(unit) {
+            this.clearMovementRange();
+            const unitInfo = helpers.getUnitInfo(unit.type);
+            helpers.traverseRange(unit.tile, unit.stats.range, (neighbor, dist) => {
+                const isPassable = (unitInfo.type === 'land' && neighbor.type === 'land') ||
+                                     (unitInfo.type === 'naval' && neighbor.type === 'water') ||
+                                     (unitInfo.type === 'air');
+
+                if (!isPassable) return false; 
+
+                if (!neighbor.building && !neighbor.unit) { 
+                    const h = this.createHighlightMesh(neighbor, materials.movementRange);
+                    neighbor.isReachable = true;
+                    gameState.movementRangeHighlights.push(h);
+                } else if (neighbor.unit && neighbor.unit.owner === unit.owner &&
+                           neighbor.unit.type === unit.type &&
+                           (neighbor.unit.level + unit.level) <= config.MAX_UNIT_LEVEL) { 
+                    const h = this.createHighlightMesh(neighbor, materials.mergeRange);
+                    neighbor.isMergeTarget = true;
+                    gameState.movementRangeHighlights.push(h);
+                } else if (unitInfo.type === 'land' && neighbor.unit && neighbor.unit.type === 'Transport' && neighbor.unit.owner === unit.owner) { 
+                    const h = this.createHighlightMesh(neighbor, materials.buildRange);
+                    neighbor.isLoadable = true;
+                    gameState.movementRangeHighlights.push(h);
+                }
+                return true; 
+            });
+
+            if (unit.type === 'Transport') {
+                helpers.getNeighbors(unit.tile).forEach(neighbor => {
+                    if (neighbor.unit && neighbor.unit.owner === unit.owner && (neighbor.unit.type === 'Soldier' || neighbor.unit.type === 'Tank')) {
+                         const h = this.createHighlightMesh(neighbor, materials.buildRange);
+                         neighbor.isLoadable = true;
+                         gameState.movementRangeHighlights.push(h);
+                    }
+                });
+            }
+        },
+        showFiringRange(entity) {
+            this.clearFiringRange();
+            const startTile = helpers.getEntityTile(entity);
+            const entityStats = helpers.getEntityStats(entity);
+            const range = entityStats?.firingRange || 0;
+            if (!range) return;
+
+            helpers.traverseRange(startTile, range, (tile, dist) => {
+                const h = this.createHighlightMesh(tile, materials.firingRange);
+                gameState.firingRangeHighlights.push(h);
+                return true;
+            });
+        },
+        showInfluenceRange(buildingTile) {
+            this.clearInfluenceRange();
+            const buildingInfo = helpers.getBuildingInfo(buildingTile.building);
+            const range = buildingInfo?.influence || 0;
+            if (!range) return;
+
+            helpers.traverseRange(buildingTile, range, (tile, dist) => {
+              if (tile.type === 'land') { 
+                  const h = this.createHighlightMesh(tile, materials.influenceRange);
+                  gameState.influenceRangeHighlights.push(h);
+                }
+                return true;
+            });
+        },
+        showBuildBaseOptions(soldier) {
+            this.clearAll();
+            const validTiles = helpers.getNeighbors(soldier.tile).filter(n => n.owner === 'neutral' && n.type === 'land' && !n.building && !n.unit);
+
+            if (validTiles.length === 0) {
+                ui.showNotification("No valid location for a new base.");
+                return;
+            }
+
+            validTiles.forEach(tile => {
+                const h = this.createHighlightMesh(tile, materials.buildRange);
+                tile.isBuildable = true;
+                gameState.buildRangeHighlights.push(h);
+            });
+
+            gameState.isSelectingBuildLocation = true;
+            gameState.builderUnit = soldier;
+            ui.showNotification("Select a green tile to build a new base.");
+            ui.closeInfoPanel(false);
+        },
+        showDeployOptions(transport) {
+            this.clearMovementRange();
+            const validTiles = helpers.getNeighbors(transport.tile).filter(n => n.type === 'land' && !n.unit && !n.building);
+
+            validTiles.forEach(tile => {
+                const h = this.createHighlightMesh(tile, materials.buildRange);
+                tile.isDeployable = true;
+                gameState.movementRangeHighlights.push(h);
+            });
+
+            if(validTiles.length > 0) {
+                ui.showNotification("Select a green tile to deploy the unit.");
+            } else {
+                ui.showNotification("No valid land tiles to deploy unit.");
+                gameState.isDeploying = false;
+                gameState.deployData = null;
+            }
+        },
+        createHighlightMesh(tile, material) {
+            const highlightMesh = BABYLON.MeshBuilder.CreateCylinder("highlight", { diameter: 3.5, height: 0.2, tessellation: 6 }, scene);
+            highlightMesh.material = material;
+            highlightMesh.position.copyFrom(tile.mesh.position);
+            highlightMesh.position.y = tile.height + 0.15;
+            highlightMesh.isPickable = false;
+            return highlightMesh;
+        }
+    };
+
+    const actions = {
+        expandTerritory(startTile, range, team) {
+            helpers.traverseRange(startTile, range, (tile) => {
+                if (tile.type === 'land') {
+                    tile.owner = team;
+                    map.updateTileMaterial(tile);
+                }
+                return true;
+            });
+        },
+        startBuilding(buildingInfo) {
+            const targetTile = gameState.selectedTile;
+            if (!targetTile || targetTile.building || targetTile.unit) {
+                ui.showNotification("Cannot build here!");
+                return;
+            }
+            if (!helpers.canAfford(buildingInfo.cost, targetTile.owner)) {
+                ui.showNotification("Not enough resources!");
+                return;
+            }
+
+            helpers.deductResources(buildingInfo.cost, targetTile.owner);
+            rendering.createFoundationMesh(targetTile);
+            helpers.addToProductionQueue(buildingInfo.name, buildingInfo.time, () => {
+                targetTile.building = buildingInfo.name;
+                if (buildingInfo.stats) targetTile.stats = JSON.parse(JSON.stringify(buildingInfo.stats));
+                rendering.createBuildingMesh(targetTile);
+                if (buildingInfo.influence) this.expandTerritory(targetTile, buildingInfo.influence, targetTile.owner);
+                if (gameState.selectedTile === targetTile) ui.showTileInfo(targetTile);
+
+                const completedItem = { item: buildingInfo.name, tile: targetTile, id: Date.now() + Math.random() };
+                gameState.completedProduction.push(completedItem);
+                setTimeout(() => {
+                    gameState.completedProduction = gameState.completedProduction.filter(item => item.id !== completedItem.id);
+                }, 5000);
+
+            }, targetTile);
+        },
+        startUnitProduction(unitInfo) {
+            const baseTile = gameState.selectedTile;
+            if (!baseTile || !helpers.canAfford(unitInfo.cost, baseTile.owner)) {
+                ui.showNotification("Not enough resources!");
+                return;
+            }
+            helpers.deductResources(unitInfo.cost, baseTile.owner);
+            helpers.addToProductionQueue(unitInfo.name, unitInfo.time, () => {
+                const placementType = unitInfo.type === 'naval' ? 'water' : 'land';
+                const neighbors = helpers.getNeighbors(baseTile);
+                const mergeable = neighbors.find(n => n.type === placementType && n.unit && n.unit.type === unitInfo.name && n.unit.level < config.MAX_UNIT_LEVEL);
+                const empty = neighbors.find(n => !n.building && !n.unit && n.type === placementType);
+                let finalTile = null;
+
+                if (mergeable) {
+                    helpers.performMerge(mergeable.unit, 1, 0);
+                    ui.showNotification(`${unitInfo.name} merged. Level ${mergeable.unit.level}!`);
+                    finalTile = mergeable.tile;
+                } else if (empty) {
+                    const newUnit = {
+                        id: Date.now() + Math.random(), type: unitInfo.name, level: 1,
+                        stats: { ...unitInfo.stats, maxHealth: unitInfo.stats.health },
+                        mesh: null, tile: empty, owner: baseTile.owner, attackCooldown: 0, experience: 0,
+                        levelIndicatorContainer: null,
+                        ...(unitInfo.name === 'Transport' && { cargo: [], cargoLoad: 0, capacity: unitInfo.capacity })
+                    };
+                    rendering.createUnitMesh(newUnit, empty);
+                    gameState.units.push(newUnit);
+                    finalTile = empty;
+                } else {
+                    ui.showNotification(`No space to place ${unitInfo.name}!`);
+                    helpers.addResources(unitInfo.cost, baseTile.owner);
+                }
+
+                if (finalTile) {
+                    const completedItem = { item: unitInfo.name, tile: finalTile, id: Date.now() + Math.random() };
+                    gameState.completedProduction.push(completedItem);
+                    setTimeout(() => {
+                        gameState.completedProduction = gameState.completedProduction.filter(item => item.id !== completedItem.id);
+                    }, 5000);
+                }
+            });
+        },
+        cancelProduction(index) {
+            const item = gameState.productionQueue[index];
+            if (!item) return;
+
+            const itemInfo = helpers.getUnitInfo(item.item) || helpers.getBuildingInfo(item.item);
+            if(itemInfo) {
+                helpers.addResources(itemInfo.cost, gameState.playerAlliance);
+                ui.showNotification(`${item.item} cancelled, resources refunded.`);
+            }
+
+            if (item.tile && item.tile.foundationMesh) {
+                item.tile.foundationMesh.dispose();
+                item.tile.foundationMesh = null;
+            }
+
+            gameState.productionQueue.splice(index, 1);
+            ui.updateProductionQueueDisplay();
+        },
+        retireUnit(unit) {
+            const unitInfo = helpers.getUnitInfo(unit.type);
+            if (!unitInfo) return;
+            const refund = {
+                gold: Math.floor(unitInfo.cost.gold / 4),
+                oil: Math.floor(unitInfo.cost.oil / 4),
+                iron: Math.floor(unitInfo.cost.iron / 4)
+            };
+            helpers.addResources(refund, unit.owner);
+            helpers.handleDeath(unit);
+            ui.showNotification(`Unit retired. Refunded: ${refund.gold}💰 ${refund.oil}🛢️ ${refund.iron}⚙️`);
+            ui.closeInfoPanel();
+        },
+        demolishBuilding(tile) {
+            if (tile.building === 'Army Base') {
+                const armyBaseCount = gameState.mapData.filter(t => t.owner === tile.owner && t.building === 'Army Base').length;
+                if (armyBaseCount <= 1) {
+                    ui.showNotification("Cannot demolish your last Army Base!");
+                    return;
+                }
+            }
+            const buildingInfo = helpers.getBuildingInfo(tile.building);
+            if (!buildingInfo) return;
+            const refund = {
+                gold: Math.floor(buildingInfo.cost.gold / 4),
+                oil: Math.floor(buildingInfo.cost.oil / 4),
+                iron: Math.floor(buildingInfo.cost.iron / 4)
+            };
+            helpers.addResources(refund, tile.owner);
+            helpers.handleDeath(tile);
+            ui.showNotification(`Building demolished. Refunded: ${refund.gold}💰 ${refund.oil}🛢️ ${refund.iron}⚙️`);
+            ui.closeInfoPanel();
+        },
+        moveUnit(unit, targetTile, onCompleteCallback, stayAtAltitude = false) {
+            if (!unit || !targetTile || gameState.isMoving) return;
+            const path = helpers.findPath(unit.tile, targetTile, unit);
+            if (!path) {
+                ui.showNotification("No valid path to target!");
+                return;
+            }
+            gameState.isMoving = true;
+
+            let pathPoints;
+            const isAirUnit = unit.type === 'Fighter' || unit.type === 'Bomber';
+
+            if (isAirUnit) {
+                const cruisingAltitude = -0.5 + (8 * config.HEX_SIZE); 
+                pathPoints = [];
+                pathPoints.push(unit.mesh.position.clone()); 
+
+                for (let i = 1; i < path.length; i++) {
+                    const tile = path[i];
+                    const pos = tile.mesh.position.clone();
+
+                    if (i === path.length - 1 && !stayAtAltitude) {
+                        pos.y = tile.height + 0.6; 
+                    } else {
+                        pos.y = cruisingAltitude;
+                    }
+                    pathPoints.push(pos);
+                }
+
+                if (pathPoints.length > 1) {
+                    pathPoints[1].y = cruisingAltitude;
+                }
+            } else {
+
+                pathPoints = path.map(tile => {
+                    const pos = tile.mesh.position.clone();
+                    pos.y = tile.height + 0.6;
+                    return pos;
+                });
+            }
+
+            const catmullRom = BABYLON.Curve3.CreateCatmullRomSpline(pathPoints, 10, false);
+            const moveAnim = new BABYLON.Animation("move", "position", 60, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            const keys = catmullRom.getPoints().map((p, i) => ({ frame: i, value: p }));
+            moveAnim.setKeys(keys);
+            unit.mesh.animations = [moveAnim];
+
+            scene.beginAnimation(unit.mesh, 0, keys.length - 1, false, unit.stats.speed, () => {
+                unit.tile.unit = null;
+                targetTile.unit = unit;
+                unit.tile = targetTile;
+                unit.mesh.position.copyFrom(pathPoints[pathPoints.length - 1]);
+                gameState.isMoving = false;
+                if (onCompleteCallback) {
+                    onCompleteCallback();
+                } else {
+                    highlight.clearAll();
+                    gameState.selectedUnit = null;
+                    handlers.selectTile(targetTile);
+                }
+            });
+        },
+        mergeUnits(movingUnit, stationaryUnit) {
+            if (!movingUnit || !stationaryUnit || gameState.isMoving) return;
+
+            const newLevel = stationaryUnit.level + movingUnit.level;
+            if (newLevel > config.MAX_UNIT_LEVEL) {
+                ui.showNotification("Cannot merge: Exceeds max level.");
+                return;
+            }
+
+            const targetTile = stationaryUnit.tile;
+
+            this.moveUnit(movingUnit, targetTile, () => {
+                helpers.performMerge(stationaryUnit, movingUnit.level, movingUnit.stats.health);
+                ui.showNotification(`${stationaryUnit.type} merged to Level ${stationaryUnit.level}!`);
+                helpers.handleDeath(movingUnit);
+                gameState.isMoving = false;
+                highlight.clearAll();
+                gameState.selectedUnit = null;
+                handlers.selectTile(targetTile);
+                if (targetTile.unit && targetTile.unit.owner === gameState.playerAlliance) {
+                    gameState.selectedUnit = targetTile.unit;
+                    highlight.showMovementRange(targetTile.unit);
+                    highlight.showFiringRange(targetTile.unit);
+                }
+            });
+        },
+        showBuildBaseOptions(soldier) {
+            highlight.showBuildBaseOptions(soldier);
+        },
+        buildBaseWithSoldier(soldier, targetTile) {
+            const baseCost = BUILDINGS.ARMY_BASE.cost;
+            if (!helpers.canAfford(baseCost, soldier.owner)) {
+                ui.showNotification("Not enough resources to build a new base!");
+                return;
+            }
+            helpers.deductResources(baseCost, soldier.owner);
+            helpers.handleDeath(soldier);
+
+            targetTile.owner = soldier.owner;
+            map.updateTileMaterial(targetTile);
+            rendering.createFoundationMesh(targetTile);
+
+            helpers.addToProductionQueue(BUILDINGS.ARMY_BASE.name, BUILDINGS.ARMY_BASE.time, () => {
+                const buildingInfo = BUILDINGS.ARMY_BASE;
+                targetTile.building = buildingInfo.name;
+                if (buildingInfo.stats) targetTile.stats = JSON.parse(JSON.stringify(buildingInfo.stats));
+                rendering.createBuildingMesh(targetTile);
+                if (buildingInfo.influence) this.expandTerritory(targetTile, buildingInfo.influence, soldier.owner);
+                ui.showNotification(`New base established!`);
+            }, targetTile);
+
+            gameState.isSelectingBuildLocation = false;
+            gameState.builderUnit = null;
+            highlight.clearBuildRange();
+            ui.closeInfoPanel();
+        },
+        bombTile(bomber, targetTile) {
+            ui.showConfirmation(`Bomb tile (${targetTile.x}, ${targetTile.z})?`, (confirmed) => {
+                if (!confirmed) return;
+
+                const startTile = bomber.tile; 
+                const path = helpers.findPath(bomber.tile, targetTile, bomber);
+                if(!path || path.length < 2) {
+                    ui.showNotification("Cannot reach target.");
+                    return;
+                }
+
+                const approachTile = path[path.length - 2];
+
+                this.moveUnit(bomber, approachTile, () => {
+                    rendering.createBulletAndTrail(bomber.mesh.position, targetTile.mesh.position);
+                    setTimeout(() => {
+                        const targetEntity = targetTile.unit || (targetTile.building ? targetTile : null);
+                        if(targetEntity) {
+                            const damage = bomber.stats.attack;
+                            rendering.createImpactSmoke(targetTile.mesh.position, damage);
+                            targetEntity.stats.health -= damage;
+                            if (targetEntity.stats.health <= 0) {
+                                helpers.handleDeath(targetEntity, bomber);
+                            } else {
+
+                                if (this.checkRetaliation(targetEntity, bomber)) {
+                                    this.initiateRetaliation(targetEntity, bomber);
+                                }
+                            }
+                        }
+                        ui.showNotification("Target bombed!");
+
+                        this.moveUnit(bomber, startTile); 
+
+                    }, 500);
+                }, true); 
+            });
+        },
+        loadUnitAnimated(unitToLoad, transport) {
+            if (!unitToLoad || !transport || gameState.isMoving) return;
+
+            const unitInfo = helpers.getUnitInfo(unitToLoad.type);
+            if (transport.cargoLoad + unitInfo.cargoSize > transport.capacity) {
+                ui.showNotification("Not enough capacity on transport.");
+                return;
+            }
+
+            gameState.isMoving = true;
+            const startPos = unitToLoad.mesh.position.clone();
+            const endPos = transport.mesh.position.clone();
+
+            const anim = new BABYLON.Animation("boardAnim", "position", 60, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+            anim.setKeys([{ frame: 0, value: startPos }, { frame: 30, value: endPos }]);
+            unitToLoad.mesh.animations = [anim];
+
+            scene.beginAnimation(unitToLoad.mesh, 0, 30, false, 2.0, () => {
+                transport.cargoLoad += unitInfo.cargoSize;
+                helpers.boardTransport(unitToLoad, transport);
+                ui.showNotification(`${unitInfo.name} boarded transport.`);
+
+                gameState.isMoving = false;
+                ui.closeInfoPanel();
+                handlers.selectTile(transport.tile);
+            });
+        },
+        selectCargoForDeploy(transport, cargoIndex) {
+            gameState.isDeploying = true;
+            gameState.deployData = { transport, cargoIndex };
+            highlight.showDeployOptions(transport);
+        },
+        deployCargo(transport, cargoIndex, targetTile) {
+            const unitToDeploy = transport.cargo[cargoIndex];
+            if (!unitToDeploy) return;
+
+            const unitInfo = helpers.getUnitInfo(unitToDeploy.type);
+
+            transport.cargo.splice(cargoIndex, 1);
+            transport.cargoLoad -= unitInfo.cargoSize;
+
+            unitToDeploy.tile = targetTile;
+            rendering.createUnitMesh(unitToDeploy, targetTile);
+            gameState.units.push(unitToDeploy);
+
+            ui.showNotification(`${unitToDeploy.name} deployed.`);
+            gameState.isDeploying = false;
+            gameState.deployData = null;
+            highlight.clearMovementRange();
+            handlers.selectTile(transport.tile);
+        },
+        initiateAttack(attacker, target) {
+            const attackerStats = helpers.getEntityStats(attacker);
+            const attackerMesh = helpers.getEntityMesh(attacker);
+            const targetMesh = helpers.getEntityMesh(target);
+
+            if (!attackerStats || !attackerMesh || !targetMesh) return;
+
+            attacker.attackCooldown = 1 / (attackerStats.attackSpeed || 1);
+
+            const bulletTravelTime = (BABYLON.Vector3.Distance(attackerMesh.position, targetMesh.position) / 25);
+            rendering.createBulletAndTrail(attackerMesh.position.clone().add(new BABYLON.Vector3(0,1,0)), targetMesh.position.clone().add(new BABYLON.Vector3(0,1,0)));
+
+            setTimeout(() => {
+                if (!helpers.getEntityMesh(target)) return;
+
+                let damage = attackerStats.attack;
+                rendering.createImpactSmoke(targetMesh.position, damage);
+                rendering.flashDamage(targetMesh);
+                const targetStats = helpers.getEntityStats(target);
+                const defense = targetStats.defense || 0;
+                damage = Math.max(1, damage - defense);
+
+                let healthProperty = target.id ? target.stats : target.stats;
+                healthProperty.health -= damage;
+
+                if (healthProperty.health <= 0) {
+                    helpers.handleDeath(target, attacker);
+                    return; 
+                }
+
+                if (this.checkRetaliation(target, attacker)) {
+                    this.initiateRetaliation(target, attacker);
+                }
+
+            }, bulletTravelTime * 1000);
+        },
+        checkRetaliation(defender, originalAttacker) {
+            const defenderStats = helpers.getEntityStats(defender);
+            if (!defenderStats || !defenderStats.attack || defenderStats.attack <= 0) return false;
+
+            const startTile = helpers.getEntityTile(defender);
+            let canReach = false;
+            helpers.traverseRange(startTile, defenderStats.firingRange, (tile) => {
+                if (tile === helpers.getEntityTile(originalAttacker)) {
+                    canReach = true;
+                }
+                return !canReach; 
+            });
+
+            if (!canReach) return false;
+
+            const attackerInfo = helpers.getUnitInfo(originalAttacker.type);
+            const attackerType = attackerInfo ? attackerInfo.type : 'land'; 
+
+            if ((attackerType === 'land' && defenderStats.canAttack.land) ||
+                (attackerType === 'air' && defenderStats.canAttack.air) ||
+                (attackerType === 'naval' && defenderStats.canAttack.naval)) {
+                return true;
+            } 
+
+            return false;
+        },
+        initiateRetaliation(retaliator, originalAttacker) {
+            const retaliatorStats = helpers.getEntityStats(retaliator);
+            const retaliatorMesh = helpers.getEntityMesh(retaliator);
+            const originalAttackerMesh = helpers.getEntityMesh(originalAttacker);
+
+            if (!retaliatorStats || !retaliatorMesh || !originalAttackerMesh) return;
+
+            retaliator.attackCooldown = 1 / (retaliatorStats.attackSpeed || 1);
+
+            const bulletTravelTime = (BABYLON.Vector3.Distance(retaliatorMesh.position, originalAttackerMesh.position) / 25);
+            rendering.createBulletAndTrail(retaliatorMesh.position.clone().add(new BABYLON.Vector3(0,1,0)), originalAttackerMesh.position.clone().add(new BABYLON.Vector3(0,1,0)));
+
+            setTimeout(() => {
+                if (!helpers.getEntityMesh(originalAttacker)) return;
+
+                let damage = retaliatorStats.attack;
+                rendering.createImpactSmoke(originalAttackerMesh.position, damage);
+                rendering.flashDamage(originalAttackerMesh);
+                const originalAttackerStats = helpers.getEntityStats(originalAttacker);
+                const defense = originalAttackerStats.defense || 0;
+                damage = Math.max(1, damage - defense);
+
+                let healthProperty = originalAttacker.id ? originalAttacker.stats : originalAttacker.stats;
+                healthProperty.health -= damage;
+
+                if (healthProperty.health <= 0) {
+                    helpers.handleDeath(originalAttacker, retaliator);
+                }
+            }, bulletTravelTime * 1000);
+        }
+    };
+
+    const handlers = {
+        handleTileClick(tile) {
+            if (gameState.isMoving || gameState.isAwaitingConfirmation) return;
+            if (gameState.selectedUnit && tile.unit === gameState.selectedUnit) return;
+
+            if (gameState.isSelectingBuildLocation) {
+                if (tile.isBuildable) {
+                    actions.buildBaseWithSoldier(gameState.builderUnit, tile);
+                }
+                return;
+            }
+
+            if (gameState.isDeploying) {
+                if (tile.isDeployable) {
+                    actions.deployCargo(gameState.deployData.transport, gameState.deployData.cargoIndex, tile);
+                }
+                return;
+            }
+
+            if (gameState.selectedUnit) {
+                const selectedIsLandUnit = gameState.selectedUnit.type === 'Soldier' || gameState.selectedUnit.type === 'Tank';
+                const targetIsTransport = tile.unit && tile.unit.type === 'Transport';
+
+                if (selectedIsLandUnit && targetIsTransport && 
+                    gameState.selectedUnit.owner === tile.unit.owner && 
+                    helpers.isAdjacent(gameState.selectedUnit.tile, tile)) {
+
+                    if (helpers.getNeighbors(tile).some(n => n.type === 'land')) {
+                         actions.loadUnitAnimated(gameState.selectedUnit, tile.unit);
+                    }
+                    return;
+                }
+
+                if (gameState.selectedUnit.type === 'Transport' && tile.isLoadable && tile.unit) {
+                    actions.loadUnitAnimated(tile.unit, gameState.selectedUnit);
+                    return;
+                }
+
+                if (tile.isMergeTarget) {
+                    actions.mergeUnits(gameState.selectedUnit, tile.unit);
+                    return;
+                }
+                if (tile.isReachable) {
+                    actions.moveUnit(gameState.selectedUnit, tile);
+                    return;
+                }
+                if (gameState.selectedUnit.type === 'Bomber' && tile.owner !== gameState.playerAlliance && tile.owner !== 'neutral') {
+                    actions.bombTile(gameState.selectedUnit, tile);
+                    return;
+                }
+            }
+
+            ui.closeInfoPanel(false);
+            this.selectTile(tile);
+            highlight.clearAll();
+
+            if (tile.unit && tile.unit.owner === gameState.playerAlliance) {
+                gameState.selectedUnit = tile.unit;
+                highlight.showMovementRange(tile.unit);
+                highlight.showFiringRange(tile.unit);
+            } else {
+                gameState.selectedUnit = null;
+                if (tile.building && tile.owner === gameState.playerAlliance) {
+                    highlight.showFiringRange(tile);
+                    highlight.showInfluenceRange(tile);
+                }
+            }
+        },
+        selectTile(tile) {
+            if (highlightedTileMesh) highlightedTileMesh.dispose();
+            if (tile && tile.mesh) {
+                const h = BABYLON.MeshBuilder.CreateCylinder("h", { diameter: 3.8, height: 0.15, tessellation: 6 }, scene);
+                h.isPickable = false;
+                h.position.copyFrom(tile.mesh.position);
+                h.position.y = tile.height + 0.1;
+                h.material = materials.highlight;
+                highlightedTileMesh = h;
+            }
+            gameState.selectedTile = tile;
+            ui.showTileInfo(tile);
+        },
+        handleConfirmation(confirmed) {
+            if (gameState.confirmationCallback) {
+                gameState.confirmationCallback(confirmed);
+            }
+            ui.hideConfirmation();
+        }
+    };
+
+    const helpers = {
+        getTileAt(x, z) { return gameState.mapData?.find(t => t.x === x && t.z === z) || null; },
+        getNeighbors(tile) {
+            if (!tile) return [];
+            const { x, z } = tile;
+
+            const nCoords = (x % 2 === 0) ?
+                [[x, z - 1], [x, z + 1], [x - 1, z], [x + 1, z], [x - 1, z - 1], [x + 1, z - 1]] :
+                [[x, z - 1], [x, z + 1], [x - 1, z], [x + 1, z], [x - 1, z + 1], [x + 1, z + 1]];
+            return nCoords.map(c => this.getTileAt(c[0], c[1])).filter(t => t !== null);
+        },
+        isAdjacent(tile1, tile2) {
+            return this.getNeighbors(tile1).includes(tile2);
+        },
+        findNearestLand(x, z) {
+            let startTile = this.getTileAt(x, z);
+            if (startTile && startTile.type === 'land') return startTile;
+
+            let queue = [startTile];
+            let visited = new Set([startTile]);
+            while (queue.length > 0) {
+                let current = queue.shift();
+                if (current.type === 'land') return current;
+                this.getNeighbors(current).forEach(n => {
+                    if (n && !visited.has(n)) {
+                        visited.add(n);
+                        queue.push(n);
+                    }
+                });
+            }
+            return null;
+        },
+        isAdjacentToWater(tile) { return this.getNeighbors(tile).some(n => n.type === 'water'); },
+        isAdjacentToBase(tile) { return this.getNeighbors(tile).some(n => n.owner === tile.owner && (n.building === 'Army Base' || n.building === 'Naval Base' || n.building === 'Air Base')); },
+        canAfford(cost, team = 'blue') {
+            const res = gameState.teams[team].resources;
+            return (cost.gold === undefined || res.gold >= cost.gold) &&
+                   (cost.oil === undefined || res.oil >= cost.oil) &&
+                   (cost.iron === undefined || res.iron >= cost.iron);
+        },
+        deductResources(cost, team = 'blue') {
+            const res = gameState.teams[team].resources;
+            if (cost.gold) res.gold -= cost.gold;
+            if (cost.oil) res.oil -= cost.oil;
+            if (cost.iron) res.iron -= cost.iron;
+        },
+        addResources(gains, team = 'blue') {
+            const res = gameState.teams[team].resources;
+            if (gains.gold) res.gold += gains.gold;
+            if (gains.oil) res.oil += gains.oil;
+            if (gains.iron) res.iron += gains.iron;
+        },
+        addToProductionQueue(item, time, onComplete, tile = null) {
+            gameState.productionQueue.push({ item, totalTime: time, remainingTime: time, onComplete, tile });
+            ui.updateProductionQueueDisplay();
+        },
+        getIconForItem(item) {
+            const building = Object.values(BUILDINGS).find(b => b.name === item);
+            if (building) return building.icon;
+            const unit = Object.values(UNITS).find(u => u.name === item);
+            if (unit) return unit.icon;
+            return '❓';
+        },
+        boardTransport(unitToLoad, transport) {
+
+            if (unitToLoad.tile) {
+                unitToLoad.tile.unit = null;
+            }
+            unitToLoad.tile = null; 
+
+            gameState.units = gameState.units.filter(u => u.id !== unitToLoad.id);
+
+            if (unitToLoad.mesh) unitToLoad.mesh.dispose();
+            if (unitToLoad.levelIndicatorContainer) unitToLoad.levelIndicatorContainer.dispose();
+            unitToLoad.mesh = null;
+            unitToLoad.levelIndicatorContainer = null;
+
+            transport.cargo.push(unitToLoad);
+        },
+        findPath(startTile, endTile, unit) {
+            const unitInfo = this.getUnitInfo(unit.type);
+            if (!unitInfo) return null;
+            const unitMovementType = unitInfo.type;
+
+            let openSet = [startTile];
+            const cameFrom = new Map();
+            const gScore = new Map([[startTile, 0]]);
+            const fScore = new Map([[startTile, BABYLON.Vector3.Distance(startTile.mesh.position, endTile.mesh.position)]]);
+
+            while (openSet.length > 0) {
+                let current = openSet.sort((a, b) => fScore.get(a) - fScore.get(b))[0];
+                if (current === endTile) {
+
+                    let path = [current];
+                    while (cameFrom.has(current)) {
+                        current = cameFrom.get(current);
+                        path.unshift(current);
+                    }
+                    return path;
+                }
+                openSet = openSet.filter(tile => tile !== current);
+                this.getNeighbors(current).forEach(neighbor => {
+                    const isPassableTerrain = (unitMovementType === 'land' && neighbor.type === 'land') ||
+                                              (unitMovementType === 'naval' && neighbor.type === 'water') ||
+                                              (unitMovementType === 'air');
+                    if (!isPassableTerrain) return;
+
+                    if (neighbor !== endTile) {
+                        if (neighbor.building) return;
+                        if (neighbor.unit) {
+                            if (unitMovementType === 'air') {
+                                const neighborUnitInfo = this.getUnitInfo(neighbor.unit.type);
+                                if (neighborUnitInfo.type === 'air') return;
+                            } else {
+                                return;
+                            }
+                        }
+                    }
+
+                    const tentative_gScore = gScore.get(current) + 1;
+                    if (tentative_gScore < (gScore.get(neighbor) || Infinity)) {
+                        cameFrom.set(neighbor, current);
+                        gScore.set(neighbor, tentative_gScore);
+                        fScore.set(neighbor, gScore.get(neighbor) + BABYLON.Vector3.Distance(neighbor.mesh.position, endTile.mesh.position));
+                        if (!openSet.includes(neighbor)) openSet.push(neighbor);
+                    }
+                });
+            }
+            return null; 
+        },
+        getEntityStats(entity) {
+            if (!entity) return null;
+            if (entity.id && entity.tile) return entity.stats; 
+            if (entity.building) { 
+                const buildingInfo = this.getBuildingInfo(entity.building);
+                if (!buildingInfo) return null;
+                return { ...buildingInfo.stats, ...entity.stats };
+            }
+            return null;
+        },
+        getUnitInfo(typeName) { return Object.values(UNITS).find(u => u.name === typeName); },
+        getBuildingInfo(typeName) { return Object.values(BUILDINGS).find(b => b.name === typeName); },
+        getEntityOwner(entity) { return entity.owner; },
+        getEntityMesh(entity) { return entity.mesh || entity.buildingMesh; },
+        getEntityTile(entity) { return entity.tile || entity; },
+        handleDeath(entity, attacker = null) {
+            const owner = this.getEntityOwner(entity);
+            const wasArmyBase = entity.building === 'Army Base';
+
+            if (entity.id && entity.tile) { 
+                if (attacker && attacker.id && attacker.tile) {
+                    const xpGained = this.calculateXPGain(entity);
+                    attacker.experience = (attacker.experience || 0) + xpGained;
+                    ui.showNotification(`${attacker.type} gained ${Math.round(xpGained)} XP!`);
+                }
+                if (entity.mesh) entity.mesh.dispose();
+                if (entity.levelIndicatorContainer) entity.levelIndicatorContainer.dispose();
+
+                if (entity.tile.unit === entity) {
+                    entity.tile.unit = null;
+                }
+                gameState.units = gameState.units.filter(u => u.id !== entity.id);
+            } else if (entity.building) { 
+                if (entity.buildingMesh) entity.buildingMesh.dispose();
+                if (entity.foundationMesh) entity.foundationMesh.dispose();
+                entity.building = null;
+                entity.buildingMesh = null;
+                entity.stats = null;
+            }
+
+            if (wasArmyBase && gameState.teams[owner]?.active) {
+                const remainingBases = gameState.mapData.filter(t => t.owner === owner && t.building === 'Army Base').length;
+                if (remainingBases === 0) {
+                    this.eliminateTeam(owner, attacker);
+                }
+            }
+        },
+        eliminateTeam(defeatedTeam, attacker) {
+            ui.showNotification(`${defeatedTeam.charAt(0).toUpperCase() + defeatedTeam.slice(1)} has been eliminated!`);
+            gameState.teams[defeatedTeam].active = false;
+
+            if (attacker) {
+                const victorTeam = this.getEntityOwner(attacker);
+                if (gameState.teams[victorTeam]) {
+                    this.addResources(config.DEFEAT_REWARD, victorTeam);
+                    ui.showNotification(`${victorTeam.charAt(0).toUpperCase() + victorTeam.slice(1)} receives a bonus of ${config.DEFEAT_REWARD.gold}💰, ${config.DEFEAT_REWARD.oil}🛢️, ${config.DEFEAT_REWARD.iron}⚙️!`);
+                }
+            }
+
+            const unitsToDestroy = gameState.units.filter(u => u.owner === defeatedTeam);
+            [...unitsToDestroy].forEach(unit => this.handleDeath(unit)); 
+
+            gameState.mapData.forEach(tile => {
+                if (tile.owner === defeatedTeam) {
+                    if (tile.building) {
+                        this.handleDeath(tile); 
+                    }
+                    tile.owner = 'neutral';
+                    map.updateTileMaterial(tile);
+                }
+            });
+        },
+        calculateXPGain(destroyedUnit) {
+            const unitInfo = this.getUnitInfo(destroyedUnit.type);
+            if (!unitInfo) return 0;
+            const costValue = (unitInfo.cost.gold || 0) + (unitInfo.cost.oil || 0) * 5 + (unitInfo.cost.iron || 0) * 3;
+            return costValue * config.XP_COST_FACTOR * destroyedUnit.level;
+        },
+        performMerge(unit, levelsToAdd, healthToAdd) {
+            const unitInfo = this.getUnitInfo(unit.type);
+            const newLevel = unit.level + levelsToAdd;
+
+            unit.level = newLevel;
+            const bonus = (newLevel - 1) * config.MERGE_STAT_BONUS;
+            unit.stats.maxHealth = Math.floor(unitInfo.stats.health * (1 + bonus));
+            unit.stats.attack = Math.floor(unitInfo.stats.attack * (1 + bonus));
+            unit.stats.defense = Math.floor(unitInfo.stats.defense * (1 + bonus));
+            unit.stats.health = Math.min(unit.stats.maxHealth, unit.stats.health + healthToAdd);
+
+            rendering.updateUnitMesh(unit);
+            rendering.createOrUpdateLevelIndicator(unit);
+        },
+        traverseRange(startTile, range, callback) {
+            let queue = [[startTile, 0]];
+            let visited = new Set([startTile]);
+
+            while (queue.length > 0) {
+                let [currentTile, distance] = queue.shift();
+                if (distance >= range) continue;
+
+                this.getNeighbors(currentTile).forEach(neighbor => {
+                    if (neighbor && !visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        if (callback(neighbor, distance + 1)) {
+                            queue.push([neighbor, distance + 1]);
+                        }
+                    }
+                });
+            }
+        }
+    };
+
+    function gameLoop(delta) {
+
+        let completedItems = [];
+        for (let i = 0; i < Math.min(gameState.productionQueue.length, config.MAX_CONCURRENT_BUILDS); i++) {
+            const currentItem = gameState.productionQueue[i];
+            let boost = 1.0;
+
+            if (currentItem.tile && currentItem.tile.building === null) {
+                const neighbors = helpers.getNeighbors(currentItem.tile);
+                const soldierCount = neighbors.filter(n => n.unit && n.unit.type === 'Soldier' && n.unit.owner === currentItem.tile.owner).length;
+                boost += soldierCount * config.CONSTRUCTION_BOOST_PER_SOLDIER;
+            }
+            currentItem.remainingTime -= delta * boost;
+            if (currentItem.remainingTime <= 0) {
+                currentItem.onComplete();
+                completedItems.push(currentItem);
+            }
+        }
+        if (completedItems.length > 0) {
+            gameState.productionQueue = gameState.productionQueue.filter(item => !completedItems.includes(item));
+        }
+
+        gameState.units.forEach(unit => {
+            if (unit.stats.health < unit.stats.maxHealth && helpers.isAdjacentToBase(unit.tile)) {
+                unit.stats.health = Math.min(unit.stats.maxHealth, unit.stats.health + config.HEAL_RATE * delta);
+            }
+        });
+
+        gameState.resourceGenerationTimer += delta;
+        if (gameState.resourceGenerationTimer >= config.RESOURCE_GENERATION_INTERVAL) {
+            gameState.resourceGenerationTimer -= config.RESOURCE_GENERATION_INTERVAL;
+            Object.values(gameState.teams).forEach(team => {
+                if (!team.active) return;
+                let income = { gold: 0, oil: 0, iron: 0 };
+                gameState.mapData.forEach(tile => {
+                    if (tile.owner === Object.keys(gameState.teams).find(key => gameState.teams[key] === team)) {
+                        income.gold += config.TILE_REVENUE;
+                        if (tile.building) {
+                            const building = helpers.getBuildingInfo(tile.building);
+                            if (building?.output) {
+                                if (building.output.gold) income.gold += building.output.gold;
+                                if (building.output.oil) income.oil += building.output.oil;
+                                if (building.output.iron) income.iron += building.output.iron;
+                            }
+                        }
+                    }
+                });
+                helpers.addResources(income, Object.keys(gameState.teams).find(key => gameState.teams[key] === team));
+            });
+        }
+
+        const combatants = [
+            ...gameState.units,
+            ...gameState.mapData.filter(t => t.building && helpers.getBuildingInfo(t.building)?.stats?.attack > 0)
+        ];
+        combatants.forEach(attacker => {
+            if (attacker.attackCooldown > 0) {
+                attacker.attackCooldown -= delta;
+                return;
+            }
+            const attackerStats = helpers.getEntityStats(attacker);
+            if (!attackerStats || !attackerStats.firingRange) return;
+
+            const startTile = helpers.getEntityTile(attacker);
+            let potentialTargets = [];
+            helpers.traverseRange(startTile, attackerStats.firingRange, (tile, dist) => {
+                const targetEntity = tile.unit || (tile.building ? tile : null);
+                if (targetEntity && helpers.getEntityOwner(targetEntity) !== helpers.getEntityOwner(attacker) && helpers.getEntityOwner(targetEntity) !== 'neutral') {
+                    const targetInfo = helpers.getUnitInfo(targetEntity.type);
+                    const targetType = targetInfo ? targetInfo.type : (tile.type === 'land' ? 'land' : 'naval');
+
+                    if (attackerStats.canAttack.land && (targetType === 'land' || (targetType === 'building' && tile.type === 'land'))) potentialTargets.push(targetEntity);
+                    else if (attackerStats.canAttack.air && targetType === 'air') potentialTargets.push(targetEntity);
+                    else if (attackerStats.canAttack.naval && (targetType === 'naval' || (targetType === 'building' && tile.type === 'water'))) potentialTargets.push(targetEntity);
+                }
+                return true;
+            });
+
+            const target = potentialTargets[0];
+            if (target) {
+                actions.initiateAttack(attacker, target);
+            }
+        });
+
+        ui.updateProductionQueueDisplay();
+        ui.updateResourceDisplay();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        ui.updateResourceDisplay();
+
+        let p = 0;
+        const i = setInterval(() => {
+            p += 2;
+            document.getElementById('loadingProgress').style.width = `${p}%`;
+            if (p >= 100) {
+                clearInterval(i);
+                setTimeout(() => {
+                    const splash = document.getElementById('splashScreen');
+                    splash.style.opacity = '0';
+                    setTimeout(() => {
+                        splash.remove();
+                        initGame();
+                    }, 600);
+                }, 500);
+            }
+        }, 50);
+    });
+    </script>
+</body>
+</html>
